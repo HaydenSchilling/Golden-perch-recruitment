@@ -1,3 +1,5 @@
+# Sensitivity Analysis of fish size - change to 200mm
+
 # Golden perch YOY summary plot
 
 # Get Data
@@ -39,8 +41,6 @@ key_rivers <- c("Lachlan River", "Macquarie River", "Gwydir River", "Namoi River
 
 catch <- catch %>% filter(WaterbodyName %in% key_rivers)
 
-range(catch$SampleDate)
-table(catch$Method)
 
 bio <- read_csv("Golden-perch-recruitment/Data/All bio_11_08_2023.csv")
 
@@ -97,7 +97,7 @@ ggplot(gp_bio_expanded, aes(x=Length_mm)) + geom_histogram() + facet_wrap(~Month
 ggplot(gp_bio_expanded, aes(x=Length_mm)) + geom_histogram() + facet_wrap(~WaterbodyName)
 
 
-gp_bio_expanded <- gp_bio_expanded %>% mutate(Stage = case_when(Length_mm <= 124 ~ "YOY",
+gp_bio_expanded <- gp_bio_expanded %>% mutate(Stage = case_when(Length_mm <= 200 ~ "YOY",
                                                                 T ~ "Adult" ),
                                               Year = year(SampleDate),
                                               FinYear = case_when(Month > 6 ~ Year+1,
@@ -105,7 +105,7 @@ gp_bio_expanded <- gp_bio_expanded %>% mutate(Stage = case_when(Length_mm <= 124
 
 
 catch_yoy <- gp_bio_expanded %>% group_by(OperationID) %>% summarise(GP_YOY = sum(Stage == "YOY"),
-                                                            GP_Mature = sum(Stage == "Adult"))
+                                                                     GP_Mature = sum(Stage == "Adult"))
 
 yoy <- gp_bio_expanded %>% filter(Stage == "YOY")
 hist(yoy$Month)
@@ -163,7 +163,7 @@ mydata <- catch %>%
 
 mydata <- mydata  %>% filter(WaterbodyName == "Warrego River" |
                                WaterbodyName == "Darling River" |
-                              WaterbodyName == "Barwon River"|
+                               WaterbodyName == "Barwon River"|
                                WaterbodyName == "Bogan River"|
                                WaterbodyName == "Boomi River") %>%
   filter(Sampling_duration >2) %>% distinct(.keep_all = TRUE)
@@ -178,7 +178,7 @@ mydata <- mydata  %>% filter(WaterbodyName == "Warrego River" |
 mydata_wide <- mydata %>% select(1,4:12,19:23) %>% #drop_na(SWWRPANAME_NEW) %>%
   # this bit needed for some dud database entries.
   group_by(SampleDate, SamplingRecordID, OperationID, SiteName, SampleLatitude, SampleLongitude, WaterbodyName, 
-          Method, Sampling_duration, SiteID, CommonName) %>%
+           Method, Sampling_duration, SiteID, CommonName) %>%
   summarise(Caught = sum(NumberCaught)) %>% 
   pivot_wider(names_from = CommonName, values_from = Caught,values_fill = 0) %>%
   left_join(catch_yoy) %>%
@@ -205,9 +205,9 @@ ttt <- total_effort %>% left_join(total_YOY) %>%
 
 # prepare data for 3 - 6 month prior
 mydata_wide <- mydata_wide %>% mutate(pre3 = Date %m-% months(3),
-                       pre6 = Date %m-% months(6),
-                       NorthernRain = as.numeric(NA),
-                       year_aligned = lubridate::year(Date))
+                                      pre6 = Date %m-% months(12),
+                                      NorthernRain = as.numeric(NA),
+                                      year_aligned = lubridate::year(Date))
 
 ### Now need to match to rain
 rain_dat <- read_csv("Golden-perch-recruitment/Data/Monthly Rain northern MDB.csv") %>% select(-year) %>%
@@ -231,8 +231,8 @@ ggplot(mydata_wide, aes(NorthernRain, GP_YOY)) + geom_point() + geom_smooth()
 
 ### SOI
 soi_dat <- read_csv("Golden-perch-recruitment/Data/SOI Data.csv") %>% mutate(Date = ym(YearMonth) +14,
-                                               Year = year(Date),
-                                               Month = month(Date))
+                                                                             Year = year(Date),
+                                                                             Month = month(Date))
 mydata_wide$Mean_SOI <- as.numeric(NA)
 
 for(i in 1:nrow(mydata_wide)){
@@ -256,7 +256,7 @@ for(i in 1:nrow(mydata_wide)){
 ### Monsoonal Index
 monsoon_dat <- read_csv("Golden-perch-recruitment/Data/Monsoon Index BOM.csv") %>%
   mutate(Date = dmy(paste(Day, Month, Year)))
-  
+
 mydata_wide$Mean_MonsoonIndex <- as.numeric(NA)
 
 for(i in 1:nrow(mydata_wide)){
@@ -312,7 +312,7 @@ flow_dat <- read_csv("Golden-perch-recruitment/Data/Warrego at Barringun 423004.
   mutate(Lg_Achieved = case_when(Lg_Duration == 5 ~ 1,
                                  T ~ 0),
          Overbank_Achieved = case_when(OverBank_Duration == 2 ~ 1,
-                                 T ~ 0))
+                                       T ~ 0))
 
 temperature_dat <- read_csv("Golden-perch-recruitment/Data/temps/Warrego_temp_-29.10_145.75.csv") %>%
   mutate(Ave_temp = (min_temp+ max_temp)/2) %>% rename(Date = `YYYY-MM-DD`)
@@ -443,6 +443,7 @@ temperature_dat7 <- read_csv("Golden-perch-recruitment/Data/temps/Boomi_temp_-28
   mutate(Ave_temp = (min_temp+ max_temp)/2) %>% rename(Date = `YYYY-MM-DD`)
 
 
+
 #### Max flow variability
 # Function from Tonkins code - used in later loop
 get_range2 <- function(x) {
@@ -510,9 +511,9 @@ ggplot(ffdat2, aes(Date, Flow)) + geom_line()+
 quantile(ffdat2$Flow, c(.1,.95), na.rm=T)
 
 flow_dat2 <- flow_dat2 %>% mutate(above_5_perc = case_when(Flow>20274 ~ "Yes",
-                                                         T ~ "No"),
-                                days_since_5_perc = as.numeric(0),
-                                most_recent_5_perc = Date) 
+                                                           T ~ "No"),
+                                  days_since_5_perc = as.numeric(0),
+                                  most_recent_5_perc = Date) 
 
 # now North Darling
 ffdat3 <- flow_dat3 %>% filter(Date >= as.Date("1990-01-01"))
@@ -643,16 +644,16 @@ flow_dat7 <- flow_dat7 %>% mutate(days_since_5_perc = Date - most_recent_5_perc)
 
 for(i in 1:nrow(mydata_wide)){
   if(mydata_wide$WaterbodyName2[i] == "Warrego River"){
-  temp_flow <- flow_dat %>% filter(Date >= mydata_wide$pre6[i], Date <= mydata_wide$pre3[i])# %>%
-  temp_temp <- temperature_dat %>% filter(Date >= mydata_wide$pre6[i], Date <= mydata_wide$pre3[i])# %>%
-  mydata_wide$Mean_Flow[i] <-  mean(temp_flow$Flow, na.rm=T)
-  mydata_wide$Max_Flow[i] <-  max(temp_flow$Flow, na.rm=T)
-  mydata_wide$Max_variability[i] <- rolling_range(temp_flow$Flow, lag=3)
- # temp_flow <- flow_dat %>% filter(Date == mydata_wide$pre6[i])
-  mydata_wide$Days_since_large_flow[i] <- mydata_wide$Date[i] - temp_flow$most_recent_5_perc[1]
-  mydata_wide$Lg_Fresh[i] <- max(temp_flow$Lg_Achieved, na.rm=T)
-  mydata_wide$Over_bank[i] <- max(temp_flow$Overbank_Achieved, na.rm=T)
-  mydata_wide$Mean_Temp[i] <- mean(temp_temp$Ave_temp)
+    temp_flow <- flow_dat %>% filter(Date >= mydata_wide$pre6[i], Date <= mydata_wide$pre3[i])# %>%
+    temp_temp <- temperature_dat %>% filter(Date >= mydata_wide$pre6[i], Date <= mydata_wide$pre3[i])# %>%
+    mydata_wide$Mean_Flow[i] <-  mean(temp_flow$Flow, na.rm=T)
+    mydata_wide$Max_Flow[i] <-  max(temp_flow$Flow, na.rm=T)
+    mydata_wide$Max_variability[i] <- rolling_range(temp_flow$Flow, lag=3)
+    # temp_flow <- flow_dat %>% filter(Date == mydata_wide$pre6[i])
+    mydata_wide$Days_since_large_flow[i] <- mydata_wide$Date[i] - temp_flow$most_recent_5_perc[1]
+    mydata_wide$Lg_Fresh[i] <- max(temp_flow$Lg_Achieved, na.rm=T)
+    mydata_wide$Over_bank[i] <- max(temp_flow$Overbank_Achieved, na.rm=T)
+    mydata_wide$Mean_Temp[i] <- mean(temp_temp$Ave_temp)
   }
   else if(mydata_wide$WaterbodyName2[i] == "Barwon River"){
     temp_flow <- flow_dat2 %>% filter(Date >= mydata_wide$pre6[i], Date <= mydata_wide$pre3[i])# %>%
@@ -699,7 +700,7 @@ for(i in 1:nrow(mydata_wide)){
     mydata_wide$Mean_Flow[i] <-  mean(temp_flow$Flow, na.rm=T)
     mydata_wide$Max_Flow[i] <-  max(temp_flow$Flow, na.rm=T)
     mydata_wide$Max_variability[i] <- rolling_range(temp_flow$Flow, lag=3)
-   # temp_flow <- flow_dat5 %>% filter(Date == mydata_wide$pre6[i])
+    # temp_flow <- flow_dat5 %>% filter(Date == mydata_wide$pre6[i])
     mydata_wide$Days_since_large_flow[i] <- mydata_wide$Date[i] - temp_flow$most_recent_5_perc[1]
     mydata_wide$Lg_Fresh[i] <- max(temp_flow$Lg_Achieved, na.rm=T)
     mydata_wide$Over_bank[i] <- max(temp_flow$Overbank_Achieved, na.rm=T)
@@ -748,12 +749,12 @@ mydata_wide <- mydata_wide %>% mutate(SampleDate = as.Date(SampleDate))
 
 for(i in 1:nrow(mydata_wide)){
   if(mydata_wide$WaterbodyName2[i] == "Warrego River"){
-  mydata_wide$stocking[i] <- 0
+    mydata_wide$stocking[i] <- 0
   }
   else if(mydata_wide$WaterbodyName[i] == "Darling River"){  
     temp_stock <- stock_dat %>% filter(Date >= mydata_wide$pre6[i], Date <= mydata_wide$pre3[i]) %>%
       filter(River == "Darling River")
-  mydata_wide$stocking[i] <-  sum(temp_stock$Number, na.rm=T)
+    mydata_wide$stocking[i] <-  sum(temp_stock$Number, na.rm=T)
   }
   else if(mydata_wide$WaterbodyName2[i] == "Barwon River"){  
     temp_stock <- stock_dat %>% filter(Date >= mydata_wide$pre6[i], Date <= mydata_wide$pre3[i]) %>%
@@ -769,19 +770,19 @@ for(i in 1:nrow(mydata_wide)){
     mydata_wide$stocking[i] <- 0
   }
 }
- 
+
 summary(mydata_wide$stocking)
 
 
 
- 
-write_csv(mydata_wide, "Golden-perch-recruitment/Data/GP Modelling Data prepared_full_June25.csv")
+
+write_csv(mydata_wide, "Golden-perch-recruitment/Data/Sensitivity Analysis/GP Modelling Data prepared_full_June25.csv")
 
 cor_plot_data <- mydata_wide %>%  ungroup() %>%
   select(Mean_SOI, Mean_PDO, Mean_MonsoonIndex, Mean_Flow, 
          Days_since_large_flow, NorthernRain, Max_variability,
          Mean_IOD, Mean_SAM, Mean_Temp)
-  
+
 library(psych)
 psych::cor.plot(cor_plot_data)
 
@@ -822,11 +823,11 @@ scale_sum <- mydata_wide2 %>% group_by(WaterbodyName2) %>%
             min_flow = min(Mean_Flow, na.rm=T),
             max_flow = max(Mean_Flow, na.rm=T))
 
-write_csv(scale_sum, "Golden-perch-recruitment/Data/flow scaling factors.csv")
+write_csv(scale_sum, "Golden-perch-recruitment/Data/Sensitivity Analysis/flow scaling factors.csv")
 
 
-write_csv(mydata_wide2, "Golden-perch-recruitment/Data/GP YOY modelling data_June25.csv")
-mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/GP YOY modelling data_June25.csv")
+write_csv(mydata_wide2, "Golden-perch-recruitment/Data/Sensitivity Analysis/GP YOY modelling data_June25.csv")
+mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/GP YOY modelling data_June25.csv")
 
 # mydata_wide2 <- mydata_wide2 %>% select(stocking, GP_YOY,Mean_Flow_scaled,
 #                                         Days_since_large_flow,WaterbodyName,WaterbodyName2, NorthernRain,
@@ -837,14 +838,14 @@ mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/GP YOY modelling data_Ju
 
 ggplot(mydata_wide2, aes(Days_since_large_flow, y=Mean_Flow_scaled)) + geom_point() +
   facet_wrap(~WaterbodyName2)
-ggsave("Time and Flow poor data.png", dpi=600)
+#ggsave("Time and Flow poor data.png", dpi=600)
 
 plot(mydata_wide2$Mean_SOI, mydata_wide2$Mean_MonsoonIndex)
 
 
 ### Climate models separate
 library(tidyverse)
-mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/GP YOY modelling data_June25.csv")
+mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/GP YOY modelling data_June25.csv")
 
 mydata_wide3 <- mydata_wide2 %>% select(stocking, GP_YOY, #Mean_Flow_scaled,
                                         WaterbodyName,WaterbodyName2, NorthernRain, #
@@ -867,10 +868,10 @@ c1 <- glmmTMB::glmmTMB(GP_YOY ~ scale(Mean_SOI) + scale(Mean_MonsoonIndex) +
 
 summary(mydata_wide3)
 
- summary(c1)
- car::Anova(c1)
- performance::r2(c1, tolerance = 1e-08)
- AIC(c1)
+summary(c1)
+car::Anova(c1)
+performance::r2(c1, tolerance = 1e-08)
+AIC(c1)
 
 #  # drop SOI
 # c2 <- glmmTMB::glmmTMB(GP_YOY ~ scale(Mean_MonsoonIndex) + scale(NorthernRain)+ scale(Mean_PDO) + # drop SOI
@@ -1022,270 +1023,270 @@ performance::r2(c1, tolerance = 1e-08)
 
 tid_sum <- broom.mixed::tidy(c1)
 tid_sum
-write_csv(tid_sum, "Golden-perch-recruitment/Data/GP Climate model output.csv")
-
-plot(effects::allEffects(c1))
-#str(c1)
-
-#### Prediction plots
-
-
-full_pred <- list()
-# Monsoon index
-
-new_data <- expand.grid(Mean_MonsoonIndex = seq(min(mydata_wide3$Mean_MonsoonIndex), max(mydata_wide3$Mean_MonsoonIndex), by=0.01),
-                        NorthernRain = median(mydata_wide3$NorthernRain),
-                        Mean_PDO = median(mydata_wide3$Mean_PDO),
-                        Mean_SOI = median(mydata_wide3$Mean_SOI),
-                        Mean_IOD = median(mydata_wide3$Mean_IOD),
-                        Mean_SAM = median(mydata_wide3$Mean_SAM),
-                        stocking = 0,
-                        SiteID = NA,
-                        WaterbodyName2 = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-
-ggplot(new_data, aes(Mean_MonsoonIndex, exp(PredictedFit))) + geom_line()+
-  geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5)
-
-full_pred[[1]] <- new_data %>% select(Mean_MonsoonIndex, PredictedFit, PredictedSE) %>% mutate(Variable = "Mean Monsoon Index") %>%
-  rename(xAxis = Mean_MonsoonIndex)
-
-head(full_pred[[1]])
-
-# Rain
-
-new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
-                        NorthernRain = seq(min(mydata_wide3$NorthernRain), max(mydata_wide3$NorthernRain), by=1),
-                        Mean_PDO = median(mydata_wide3$Mean_PDO),
-                        Mean_SOI = median(mydata_wide3$Mean_SOI),
-                        Mean_IOD = median(mydata_wide3$Mean_IOD),
-                        Mean_SAM = median(mydata_wide3$Mean_SAM),
-                        stocking = 0,
-                        SiteID = NA,
-                        WaterbodyName2 = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-
-ggplot(new_data, aes(NorthernRain, PredictedFit)) + geom_line()+
-  geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
-
-
-full_pred[[2]] <- new_data %>% select(NorthernRain, PredictedFit, PredictedSE) %>% mutate(Variable = "Northern Rain (mm)") %>%
-  rename(xAxis = NorthernRain)
-
-# SOI
-
-new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
-                        NorthernRain = median(mydata_wide3$NorthernRain),
-                        Mean_PDO = median(mydata_wide3$Mean_PDO),
-                        Mean_SOI = seq(min(mydata_wide3$Mean_SOI), max(mydata_wide3$Mean_SOI), by=0.01),
-                        Mean_IOD = median(mydata_wide3$Mean_IOD),
-                        Mean_SAM = median(mydata_wide3$Mean_SAM),
-                        stocking = 0,
-                        SiteID = NA,
-                        WaterbodyName2 = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-
-ggplot(new_data, aes(Mean_SOI, PredictedFit)) + geom_line()+
-  geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
-
-
-full_pred[[3]] <- new_data %>% select(Mean_SOI, PredictedFit, PredictedSE) %>% mutate(Variable = "SOI") %>%
-  rename(xAxis = Mean_SOI)
-
-# IOD
-
-new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
-                        NorthernRain = median(mydata_wide3$NorthernRain),
-                        Mean_PDO = median(mydata_wide3$Mean_PDO),
-                        Mean_IOD = seq(min(mydata_wide3$Mean_IOD), max(mydata_wide3$Mean_IOD), by=0.01),
-                        Mean_SOI = median(mydata_wide3$Mean_SOI),
-                        Mean_SAM = median(mydata_wide3$Mean_SAM),
-                        stocking = 0,
-                        SiteID = NA,
-                        WaterbodyName2 = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-
-ggplot(new_data, aes(Mean_IOD, PredictedFit)) + geom_line()+
-  geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
-
-
-full_pred[[4]] <- new_data %>% select(Mean_IOD, PredictedFit, PredictedSE) %>% mutate(Variable = "IOD") %>%
-  rename(xAxis = Mean_IOD)
-
-# SAM
-
-new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
-                        NorthernRain = median(mydata_wide3$NorthernRain),
-                        Mean_PDO = median(mydata_wide3$Mean_PDO),
-                        Mean_SAM = seq(min(mydata_wide3$Mean_SAM), max(mydata_wide3$Mean_SAM), by=0.01),
-                        Mean_SOI = median(mydata_wide3$Mean_SOI),
-                        Mean_IOD = median(mydata_wide3$Mean_IOD),
-                        stocking = 0,
-                        SiteID = NA,
-                        WaterbodyName2 = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-
-ggplot(new_data, aes(Mean_SAM, PredictedFit)) + geom_line()+
-  geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
-
-
-full_pred[[5]] <- new_data %>% select(Mean_SAM, PredictedFit, PredictedSE) %>% mutate(Variable = "SAM") %>%
-  rename(xAxis = Mean_SAM)
-
-
-# PDO
-
-new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
-                        NorthernRain = median(mydata_wide3$NorthernRain),
-                        Mean_SAM = median(mydata_wide3$Mean_SAM),
-                        Mean_PDO = seq(min(mydata_wide3$Mean_PDO), max(mydata_wide3$Mean_PDO), by=0.01),
-                        Mean_SOI = median(mydata_wide3$Mean_SOI),
-                        Mean_IOD = median(mydata_wide3$Mean_IOD),
-                        stocking = 0,
-                        SiteID = NA,
-                        WaterbodyName2 = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-
-ggplot(new_data, aes(Mean_PDO, PredictedFit)) + geom_line()+
-  geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
-
-
-full_pred[[6]] <- new_data %>% select(Mean_PDO, PredictedFit, PredictedSE) %>% mutate(Variable = "PDO") %>%
-  rename(xAxis = Mean_PDO)
-
-
-
-# stocking
-
-new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
-                        NorthernRain = median(mydata_wide3$NorthernRain),
-                        Mean_SOI =  median(mydata_wide3$Mean_SOI),
-                        Mean_IOD =  median(mydata_wide3$Mean_IOD),
-                        Mean_SAM =  median(mydata_wide3$Mean_SAM),
-                        Mean_PDO =  median(mydata_wide3$Mean_PDO),
-                        stocking = seq(min(mydata_wide3$stocking), max(mydata_wide3$stocking),by=100),
-                        SiteID = NA,
-                        WaterbodyName2 = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-
-ggplot(new_data, aes(stocking, PredictedFit)) + geom_line()+
-  geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)# +
-  #scale_y_log10()
-
-
-# full_pred[[4]] <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Variable = "Total Stocking") %>%
-#   rename(xAxis = stocking)
-
-xxdat <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Model = "Climate Model")
-
-stocking_plot_dat <- list()
-stocking_plot_dat[[1]] <- xxdat
-
-### combine for plotting
-
-full_pred <- bind_rows(full_pred)
-
-head(full_pred)
-
-#plot(ggeffects::ggpredict(c5))
-
-ggplot(full_pred, aes(xAxis, y = exp(PredictedFit))) + facet_wrap(~Variable, scales="free", strip.position = "bottom")+
-  geom_line()+ xlab(NULL)+ ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+
-  geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
-  theme_classic()+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=14),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))# +
-  #scale_y_log10()
-ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25.png", dpi =600, width = 21, height=14, units="cm")
-ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25.pdf", dpi =600, width = 21, height=14, units="cm")
-
-ggplot(full_pred, aes(xAxis, y = exp(PredictedFit))) + facet_wrap(~Variable, scales="free_x", strip.position = "bottom")+
-  geom_line()+ xlab(NULL)+ ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+
-  geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
-  theme_classic()+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=14),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))# +
-#scale_y_log10()
-ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25_scaled.png", dpi =600, width = 21, height=14, units="cm")
-ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25_scaled.pdf", dpi =600, width = 21, height=14, units="cm")
-
-
+write_csv(tid_sum, "Golden-perch-recruitment/Data/Sensitivity Analysis/GP Climate model output.csv")
+
+# plot(effects::allEffects(c1))
+# #str(c1)
+# 
+# #### Prediction plots
+# 
+# 
+# full_pred <- list()
+# # Monsoon index
+# 
+# new_data <- expand.grid(Mean_MonsoonIndex = seq(min(mydata_wide3$Mean_MonsoonIndex), max(mydata_wide3$Mean_MonsoonIndex), by=0.01),
+#                         NorthernRain = median(mydata_wide3$NorthernRain),
+#                         Mean_PDO = median(mydata_wide3$Mean_PDO),
+#                         Mean_SOI = median(mydata_wide3$Mean_SOI),
+#                         Mean_IOD = median(mydata_wide3$Mean_IOD),
+#                         Mean_SAM = median(mydata_wide3$Mean_SAM),
+#                         stocking = 0,
+#                         SiteID = NA,
+#                         WaterbodyName2 = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# 
+# ggplot(new_data, aes(Mean_MonsoonIndex, exp(PredictedFit))) + geom_line()+
+#   geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5)
+# 
+# full_pred[[1]] <- new_data %>% select(Mean_MonsoonIndex, PredictedFit, PredictedSE) %>% mutate(Variable = "Mean Monsoon Index") %>%
+#   rename(xAxis = Mean_MonsoonIndex)
+# 
+# head(full_pred[[1]])
+# 
+# # Rain
+# 
+# new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
+#                         NorthernRain = seq(min(mydata_wide3$NorthernRain), max(mydata_wide3$NorthernRain), by=1),
+#                         Mean_PDO = median(mydata_wide3$Mean_PDO),
+#                         Mean_SOI = median(mydata_wide3$Mean_SOI),
+#                         Mean_IOD = median(mydata_wide3$Mean_IOD),
+#                         Mean_SAM = median(mydata_wide3$Mean_SAM),
+#                         stocking = 0,
+#                         SiteID = NA,
+#                         WaterbodyName2 = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# 
+# ggplot(new_data, aes(NorthernRain, PredictedFit)) + geom_line()+
+#   geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
+# 
+# 
+# full_pred[[2]] <- new_data %>% select(NorthernRain, PredictedFit, PredictedSE) %>% mutate(Variable = "Northern Rain (mm)") %>%
+#   rename(xAxis = NorthernRain)
+# 
+# # SOI
+# 
+# new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
+#                         NorthernRain = median(mydata_wide3$NorthernRain),
+#                         Mean_PDO = median(mydata_wide3$Mean_PDO),
+#                         Mean_SOI = seq(min(mydata_wide3$Mean_SOI), max(mydata_wide3$Mean_SOI), by=0.01),
+#                         Mean_IOD = median(mydata_wide3$Mean_IOD),
+#                         Mean_SAM = median(mydata_wide3$Mean_SAM),
+#                         stocking = 0,
+#                         SiteID = NA,
+#                         WaterbodyName2 = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# 
+# ggplot(new_data, aes(Mean_SOI, PredictedFit)) + geom_line()+
+#   geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
+# 
+# 
+# full_pred[[3]] <- new_data %>% select(Mean_SOI, PredictedFit, PredictedSE) %>% mutate(Variable = "SOI") %>%
+#   rename(xAxis = Mean_SOI)
+# 
+# # IOD
+# 
+# new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
+#                         NorthernRain = median(mydata_wide3$NorthernRain),
+#                         Mean_PDO = median(mydata_wide3$Mean_PDO),
+#                         Mean_IOD = seq(min(mydata_wide3$Mean_IOD), max(mydata_wide3$Mean_IOD), by=0.01),
+#                         Mean_SOI = median(mydata_wide3$Mean_SOI),
+#                         Mean_SAM = median(mydata_wide3$Mean_SAM),
+#                         stocking = 0,
+#                         SiteID = NA,
+#                         WaterbodyName2 = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# 
+# ggplot(new_data, aes(Mean_IOD, PredictedFit)) + geom_line()+
+#   geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
+# 
+# 
+# full_pred[[4]] <- new_data %>% select(Mean_IOD, PredictedFit, PredictedSE) %>% mutate(Variable = "IOD") %>%
+#   rename(xAxis = Mean_IOD)
+# 
+# # SAM
+# 
+# new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
+#                         NorthernRain = median(mydata_wide3$NorthernRain),
+#                         Mean_PDO = median(mydata_wide3$Mean_PDO),
+#                         Mean_SAM = seq(min(mydata_wide3$Mean_SAM), max(mydata_wide3$Mean_SAM), by=0.01),
+#                         Mean_SOI = median(mydata_wide3$Mean_SOI),
+#                         Mean_IOD = median(mydata_wide3$Mean_IOD),
+#                         stocking = 0,
+#                         SiteID = NA,
+#                         WaterbodyName2 = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# 
+# ggplot(new_data, aes(Mean_SAM, PredictedFit)) + geom_line()+
+#   geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
+# 
+# 
+# full_pred[[5]] <- new_data %>% select(Mean_SAM, PredictedFit, PredictedSE) %>% mutate(Variable = "SAM") %>%
+#   rename(xAxis = Mean_SAM)
+# 
+# 
+# # PDO
+# 
+# new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
+#                         NorthernRain = median(mydata_wide3$NorthernRain),
+#                         Mean_SAM = median(mydata_wide3$Mean_SAM),
+#                         Mean_PDO = seq(min(mydata_wide3$Mean_PDO), max(mydata_wide3$Mean_PDO), by=0.01),
+#                         Mean_SOI = median(mydata_wide3$Mean_SOI),
+#                         Mean_IOD = median(mydata_wide3$Mean_IOD),
+#                         stocking = 0,
+#                         SiteID = NA,
+#                         WaterbodyName2 = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# 
+# ggplot(new_data, aes(Mean_PDO, PredictedFit)) + geom_line()+
+#   geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)
+# 
+# 
+# full_pred[[6]] <- new_data %>% select(Mean_PDO, PredictedFit, PredictedSE) %>% mutate(Variable = "PDO") %>%
+#   rename(xAxis = Mean_PDO)
+# 
+# 
+# 
+# # stocking
+# 
+# new_data <- expand.grid(Mean_MonsoonIndex = median(mydata_wide3$Mean_MonsoonIndex),
+#                         NorthernRain = median(mydata_wide3$NorthernRain),
+#                         Mean_SOI =  median(mydata_wide3$Mean_SOI),
+#                         Mean_IOD =  median(mydata_wide3$Mean_IOD),
+#                         Mean_SAM =  median(mydata_wide3$Mean_SAM),
+#                         Mean_PDO =  median(mydata_wide3$Mean_PDO),
+#                         stocking = seq(min(mydata_wide3$stocking), max(mydata_wide3$stocking),by=100),
+#                         SiteID = NA,
+#                         WaterbodyName2 = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(c1, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# 
+# ggplot(new_data, aes(stocking, PredictedFit)) + geom_line()+
+#   geom_ribbon(aes(ymin=PredictedFit-PredictedSE, ymax=PredictedFit+PredictedSE), alpha=0.5)# +
+# #scale_y_log10()
+# 
+# 
+# # full_pred[[4]] <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Variable = "Total Stocking") %>%
+# #   rename(xAxis = stocking)
+# 
+# xxdat <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Model = "Climate Model")
+# 
+# stocking_plot_dat <- list()
+# stocking_plot_dat[[1]] <- xxdat
+# 
+# ### combine for plotting
+# 
+# full_pred <- bind_rows(full_pred)
+# 
+# head(full_pred)
+# 
+# #plot(ggeffects::ggpredict(c5))
+# 
+# ggplot(full_pred, aes(xAxis, y = exp(PredictedFit))) + facet_wrap(~Variable, scales="free", strip.position = "bottom")+
+#   geom_line()+ xlab(NULL)+ ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+
+#   geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
+#   theme_classic()+
+#   theme(axis.text = element_text(colour="black", size=12),
+#         axis.title = element_text(face="bold", size=14),
+#         strip.placement = "outside",
+#         strip.text = element_text(face="bold", size=14),
+#         strip.background = element_blank(),
+#         panel.border = element_rect(colour="black", fill=NA))# +
+# #scale_y_log10()
+# ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25.png", dpi =600, width = 21, height=14, units="cm")
+# ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25.pdf", dpi =600, width = 21, height=14, units="cm")
+# 
+# ggplot(full_pred, aes(xAxis, y = exp(PredictedFit))) + facet_wrap(~Variable, scales="free_x", strip.position = "bottom")+
+#   geom_line()+ xlab(NULL)+ ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+
+#   geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
+#   theme_classic()+
+#   theme(axis.text = element_text(colour="black", size=12),
+#         axis.title = element_text(face="bold", size=14),
+#         strip.placement = "outside",
+#         strip.text = element_text(face="bold", size=14),
+#         strip.background = element_blank(),
+#         panel.border = element_rect(colour="black", fill=NA))# +
+# #scale_y_log10()
+# ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25_scaled.png", dpi =600, width = 21, height=14, units="cm")
+# ggsave("Golden-perch-recruitment/Figures/GP Climate model output June 25_scaled.pdf", dpi =600, width = 21, height=14, units="cm")
+# 
+# 
 
 
 #### Now Do flow modelling
 library(tidyverse)
-mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/GP YOY modelling data_June25.csv")
+mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/GP YOY modelling data_June25.csv")
 
 # mydata_wide2 <- mydata_wide2 %>% select(stocking, GP_YOY,Mean_Flow_scaled,
 #                                         Days_since_large_flow,WaterbodyName,WaterbodyName2, NorthernRain,
@@ -1315,12 +1316,12 @@ f1 <- glmmTMB::glmmTMB(GP_YOY ~ poly(Mean_Flow_scaled,2)*WaterbodyName2+
                        data = as.data.frame(mydata_wide3), family = nbinom2())
 
 f1t <- glmmTMB::glmmTMB(GP_YOY ~ poly(Mean_Flow_scaled,2)*WaterbodyName2+
-                         Mean_Temp_scaled+
-                         #scale(Mean_SOI) + scale(Mean_MonsoonIndex) + scale(NorthernRain)+ scale(Mean_PDO) + # Full model
-                         scale(stocking)+
-                         #(1|SamplingRecordID) , offset = log(Sampling_duration),
-                         (1|SiteID) + (1|SampleDate), offset = log(Sampling_duration),
-                       data = as.data.frame(mydata_wide3), family = nbinom2())
+                          Mean_Temp_scaled+
+                          #scale(Mean_SOI) + scale(Mean_MonsoonIndex) + scale(NorthernRain)+ scale(Mean_PDO) + # Full model
+                          scale(stocking)+
+                          #(1|SamplingRecordID) , offset = log(Sampling_duration),
+                          (1|SiteID) + (1|SampleDate), offset = log(Sampling_duration),
+                        data = as.data.frame(mydata_wide3), family = nbinom2())
 
 anova(f1, f1t)
 
@@ -1450,11 +1451,13 @@ plot(ggeffects::ggpredict(f1t))
 
 x1 <- as.data.frame(car::Anova(f1t))
 x1$Parameter <- row.names(x1)
-write_csv(x1, "Flow model results.csv")
+#write_csv(x1, "Golden-perch-recruitment/Data/Sensitivity Analysis/Flow model results.csv")
 
 tid_sum <- broom.mixed::tidy(f1t)
 tid_sum
-write_csv(tid_sum, "Golden-perch-recruitment/Data/Flow model output.csv")
+write_csv(tid_sum, "Golden-perch-recruitment/Data/Sensitivity Analysis/Flow model output 200mm.csv")
+
+
 
 
 x1
@@ -1464,205 +1467,205 @@ f1_sum
 
 performance::r2(f1t)
 
-
-
-### Can i make nicer prediction plots
-Darling <- mydata_wide2 %>% filter(WaterbodyName2 == "Darling River")
-Darling2 <- mydata_wide2 %>% filter(WaterbodyName2 == "South Darling River")
-Darling3 <- mydata_wide2 %>% filter(WaterbodyName2 == "North Darling River")
-Barwon <- mydata_wide2 %>% filter(WaterbodyName2 == "Barwon River")
-Warrego <- mydata_wide2 %>% filter(WaterbodyName2 == "Warrego River")
-Bogan <- mydata_wide2 %>% filter(WaterbodyName2 == "Bogan River")
-Boomi <- mydata_wide2 %>% filter(WaterbodyName2 == "Boomi River")
-
-predict_dat <- list(Darling,Darling2,Darling3, Barwon, Warrego, Bogan, Boomi)
-predict_dat_final <- list()
-
-for(j in 1:length(predict_dat)){
-# range(predict_dat[[j]]$Days_since_large_flow)
-# day_seq <- c(180, 365, 730, 1095, 1460, 1800)
-#   #seq(min(predict_dat[[1]]$Days_since_large_flow, na.rm=T), max(predict_dat[[j]]$Days_since_large_flow, na.rm=T), length.out=5)
-plot_dat <- list()
-
-for(i in 1:1){
-tmp <- data.frame(Mean_Flow_scaled =seq(min(predict_dat[[j]]$Mean_Flow_scaled, na.rm=T),max(predict_dat[[j]]$Mean_Flow_scaled, na.rm=T),by=0.1),
-                  
-                       #Days_since_large_flow =day_seq[i],
-                       #Mean_PDO = mean(mydata_wide2$Mean_PDO, na.rm=T),
-                      #Mean_MonsoonIndex = mean(mydata_wide2$NorthernRain, na.rm=T),
-                  #NorthernRain = mean(mydata_wide2$NorthernRain, na.rm=T),
-                        stocking = 0,
-                       #Mean_Monsoon_Index= median(predict_dat[[j]]$Mean_Monsoon_Index),
-                       SamplingRecordID = NA,
-                  Mean_Temp_scaled = median(mydata_wide3$Mean_Temp_scaled),
-                       Sampling_duration = 90,
-                        SiteID = NA,
-                        SampleDate=NA,
-                  WaterbodyName2 = predict_dat[[j]]$WaterbodyName2[1])
-plot_dat[[i]] <- tmp
-}
-plot_dat <- bind_rows(plot_dat)
-predict_dat_final[[j]] <- plot_dat
-}
-
 # 
-# day_bounds <- mydata_wide2 %>% group_by(WaterbodyName2) %>%
-#   summarise(min_days = min(Days_since_large_flow),
-#             max_days = max(Days_since_large_flow))
-# day_bounds
-
-predict_dat_final <- bind_rows(predict_dat_final) 
-
-Predicted_GP <- predict(f1t, newdata = predict_dat_final, re.form = NULL, se.fit = T, type="link")
-
-predict_dat_final$Predicted_GP <- Predicted_GP$fit
-predict_dat_final$SE_GP <- Predicted_GP$se.fit
-# predict_dat_final <- predict_dat_final %>% left_join(day_bounds) %>%
-#   mutate(Predicted_GP = case_when((max_days < Days_since_large_flow) ~ NA_real_,
-#          T ~ Predicted_GP)) %>%
-#   mutate(SE_GP = case_when((max_days < Days_since_large_flow) ~ NA_real_,
-#          T ~ SE_GP))
-
-
-scalings <- read_csv("Golden-perch-recruitment/Data/flow scaling factors.csv")
-predict_dat_final <- predict_dat_final %>% left_join(scalings)
-predict_dat_final$Mean_Flow_unscaled <- predict_dat_final$sd_flow_calibrate*predict_dat_final$Mean_Flow_scaled+predict_dat_final$mean_flow_calibrate
-
-predict_dat_final <- predict_dat_final %>% mutate(River_labels = case_when(WaterbodyName2 == "Boomi River" ~ "a) Boomi River",
-                                                                           WaterbodyName2 == "Bogan River" ~ "c) Bogan River",
-                                                                           WaterbodyName2 == "Warrego River" ~ "b) Warrego River",
-                                                                           WaterbodyName2 == "Darling River" ~ "f) Central Darling-Baaka",
-                                                                           WaterbodyName2 == "North Darling River" ~ "e) Northern Darling-Baaka",
-                                                                           WaterbodyName2 == "South Darling River" ~ "g) Southern Darling-Baaka",
-                                                                           WaterbodyName2 == "Barwon River" ~ "d) Barwon River",))
-
-mydata_wide2 <- mydata_wide2 %>% mutate(River_labels = case_when(WaterbodyName2 == "Boomi River" ~ "a) Boomi River",
-                                                                           WaterbodyName2 == "Bogan River" ~ "c) Bogan River",
-                                                                           WaterbodyName2 == "Warrego River" ~ "b) Warrego River",
-                                                                           WaterbodyName2 == "Darling River" ~ "f) Central Darling-Baaka",
-                                                                           WaterbodyName2 == "North Darling River" ~ "e) Northern Darling-Baaka",
-                                                                           WaterbodyName2 == "South Darling River" ~ "g) Southern Darling-Baaka",
-                                                                           WaterbodyName2 == "Barwon River" ~ "d) Barwon River",))
-
-
-
-ggplot(predict_dat_final, aes(Mean_Flow_unscaled, exp(Predicted_GP))) + geom_line() +
-  geom_ribbon(aes(ymin=exp(Predicted_GP-SE_GP), ymax = exp(Predicted_GP+SE_GP)), alpha=0.3) +
-  geom_rug(data=mydata_wide2, aes(x=Mean_Flow), inherit.aes = F)+
-  facet_wrap(~River_labels, scales = "free") +
-  #scale_y_log10()+
-  theme_classic()+
-  xlab(bquote(bold("Mean daily river discharge 3-6 month prior to sampling (ML" ~Day^'-1' *")")))+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=12),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))+
-  ylab("Predicted GP YOY ± SE (90s e-Fishing)") 
-  #ggtitle("Days since last large flow (top 5%)")
-
-ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow plots.png", dpi =600, width = 21, height=14.8, units="cm")
-ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow plots.pdf", dpi =600, width = 21, height=14.8, units="cm")
-
-
-
-# Stocking plot
-table(mydata_wide3$WaterbodyName2)
-new_data <- expand.grid(Mean_Flow_scaled = median(mydata_wide3$Mean_Flow_scaled),
-                        stocking = seq(min(mydata_wide3$stocking), max(mydata_wide3$stocking),by=100),
-                        WaterbodyName2 = "Darling River", # most common
-                        Mean_Temp_scaled = median(mydata_wide3$Mean_Temp_scaled),
-                        SiteID = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(f1t, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-xxdat <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Model = "Flow Model")
-
-stocking_plot_dat[[2]] <- xxdat
-
-
-ggplot(new_data, aes(stocking, exp(PredictedFit))) + geom_line()+# facet_wrap(~WaterbodyName2)+
-  #scale_y_log10()+
-  geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
-  ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+ theme_classic()+
-  xlab("Total Stocking")+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=14),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))
-#scale_y_log10()
-ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow stocking plot.png", dpi =600, width = 10, height=8, units="cm")
-ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow stocking plot.pdf", dpi =600, width = 10, height=8, units="cm")
-
-dddd <- lm(Mean_Temp~ Mean_Temp_scaled , data = mydata_wide3)
-summary(dddd)
-
-# Temperature plot
-table(mydata_wide3$WaterbodyName2)
-new_data <- expand.grid(Mean_Flow_scaled = median(mydata_wide3$Mean_Flow_scaled),
-                        Mean_Temp_scaled = seq(min(mydata_wide3$Mean_Temp_scaled), max(mydata_wide3$Mean_Temp_scaled),by=0.01),
-                        stocking = 0,
-                        WaterbodyName2 = "Darling River", # most common
-                        SiteID = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(f1t, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-#xxdat <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Model = "Flow Model")
-
-
-ggplot(new_data, aes(Mean_Temp_scaled*5.225e+00+2.107e+01, exp(PredictedFit))) + geom_line()+# facet_wrap(~WaterbodyName2)+
-  #scale_y_log10()+
-  geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
-  ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+ theme_classic()+
-  xlab("Temperature (°C)")+
-  geom_rug(data=mydata_wide3, aes(x=Mean_Temp), inherit.aes = F)+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=14),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))
-#scale_y_log10()
-ggsave("Golden-perch-recruitment/Figures/GP YOY Temperature plot.png", dpi =600, width = 10, height=8, units="cm")
-ggsave("Golden-perch-recruitment/Figures/GP YOY Temperature plot.pdf", dpi =600, width = 10, height=8, units="cm")
-
-
-
+# 
+# ### Can i make nicer prediction plots
+# Darling <- mydata_wide2 %>% filter(WaterbodyName2 == "Darling River")
+# Darling2 <- mydata_wide2 %>% filter(WaterbodyName2 == "South Darling River")
+# Darling3 <- mydata_wide2 %>% filter(WaterbodyName2 == "North Darling River")
+# Barwon <- mydata_wide2 %>% filter(WaterbodyName2 == "Barwon River")
+# Warrego <- mydata_wide2 %>% filter(WaterbodyName2 == "Warrego River")
+# Bogan <- mydata_wide2 %>% filter(WaterbodyName2 == "Bogan River")
+# Boomi <- mydata_wide2 %>% filter(WaterbodyName2 == "Boomi River")
+# 
+# predict_dat <- list(Darling,Darling2,Darling3, Barwon, Warrego, Bogan, Boomi)
+# predict_dat_final <- list()
+# 
+# for(j in 1:length(predict_dat)){
+#   # range(predict_dat[[j]]$Days_since_large_flow)
+#   # day_seq <- c(180, 365, 730, 1095, 1460, 1800)
+#   #   #seq(min(predict_dat[[1]]$Days_since_large_flow, na.rm=T), max(predict_dat[[j]]$Days_since_large_flow, na.rm=T), length.out=5)
+#   plot_dat <- list()
+#   
+#   for(i in 1:1){
+#     tmp <- data.frame(Mean_Flow_scaled =seq(min(predict_dat[[j]]$Mean_Flow_scaled, na.rm=T),max(predict_dat[[j]]$Mean_Flow_scaled, na.rm=T),by=0.1),
+#                       
+#                       #Days_since_large_flow =day_seq[i],
+#                       #Mean_PDO = mean(mydata_wide2$Mean_PDO, na.rm=T),
+#                       #Mean_MonsoonIndex = mean(mydata_wide2$NorthernRain, na.rm=T),
+#                       #NorthernRain = mean(mydata_wide2$NorthernRain, na.rm=T),
+#                       stocking = 0,
+#                       #Mean_Monsoon_Index= median(predict_dat[[j]]$Mean_Monsoon_Index),
+#                       SamplingRecordID = NA,
+#                       Mean_Temp_scaled = median(mydata_wide3$Mean_Temp_scaled),
+#                       Sampling_duration = 90,
+#                       SiteID = NA,
+#                       SampleDate=NA,
+#                       WaterbodyName2 = predict_dat[[j]]$WaterbodyName2[1])
+#     plot_dat[[i]] <- tmp
+#   }
+#   plot_dat <- bind_rows(plot_dat)
+#   predict_dat_final[[j]] <- plot_dat
+# }
+# 
+# # 
+# # day_bounds <- mydata_wide2 %>% group_by(WaterbodyName2) %>%
+# #   summarise(min_days = min(Days_since_large_flow),
+# #             max_days = max(Days_since_large_flow))
+# # day_bounds
+# 
+# predict_dat_final <- bind_rows(predict_dat_final) 
+# 
+# Predicted_GP <- predict(f1t, newdata = predict_dat_final, re.form = NULL, se.fit = T, type="link")
+# 
+# predict_dat_final$Predicted_GP <- Predicted_GP$fit
+# predict_dat_final$SE_GP <- Predicted_GP$se.fit
+# # predict_dat_final <- predict_dat_final %>% left_join(day_bounds) %>%
+# #   mutate(Predicted_GP = case_when((max_days < Days_since_large_flow) ~ NA_real_,
+# #          T ~ Predicted_GP)) %>%
+# #   mutate(SE_GP = case_when((max_days < Days_since_large_flow) ~ NA_real_,
+# #          T ~ SE_GP))
+# 
+# 
+# scalings <- read_csv("Golden-perch-recruitment/Data/flow scaling factors.csv")
+# predict_dat_final <- predict_dat_final %>% left_join(scalings)
+# predict_dat_final$Mean_Flow_unscaled <- predict_dat_final$sd_flow_calibrate*predict_dat_final$Mean_Flow_scaled+predict_dat_final$mean_flow_calibrate
+# 
+# predict_dat_final <- predict_dat_final %>% mutate(River_labels = case_when(WaterbodyName2 == "Boomi River" ~ "a) Boomi River",
+#                                                                            WaterbodyName2 == "Bogan River" ~ "c) Bogan River",
+#                                                                            WaterbodyName2 == "Warrego River" ~ "b) Warrego River",
+#                                                                            WaterbodyName2 == "Darling River" ~ "f) Central Darling-Baaka",
+#                                                                            WaterbodyName2 == "North Darling River" ~ "e) Northern Darling-Baaka",
+#                                                                            WaterbodyName2 == "South Darling River" ~ "g) Southern Darling-Baaka",
+#                                                                            WaterbodyName2 == "Barwon River" ~ "d) Barwon River",))
+# 
+# mydata_wide2 <- mydata_wide2 %>% mutate(River_labels = case_when(WaterbodyName2 == "Boomi River" ~ "a) Boomi River",
+#                                                                  WaterbodyName2 == "Bogan River" ~ "c) Bogan River",
+#                                                                  WaterbodyName2 == "Warrego River" ~ "b) Warrego River",
+#                                                                  WaterbodyName2 == "Darling River" ~ "f) Central Darling-Baaka",
+#                                                                  WaterbodyName2 == "North Darling River" ~ "e) Northern Darling-Baaka",
+#                                                                  WaterbodyName2 == "South Darling River" ~ "g) Southern Darling-Baaka",
+#                                                                  WaterbodyName2 == "Barwon River" ~ "d) Barwon River",))
+# 
+# 
+# 
+# ggplot(predict_dat_final, aes(Mean_Flow_unscaled, exp(Predicted_GP))) + geom_line() +
+#   geom_ribbon(aes(ymin=exp(Predicted_GP-SE_GP), ymax = exp(Predicted_GP+SE_GP)), alpha=0.3) +
+#   geom_rug(data=mydata_wide2, aes(x=Mean_Flow), inherit.aes = F)+
+#   facet_wrap(~River_labels, scales = "free") +
+#   #scale_y_log10()+
+#   theme_classic()+
+#   xlab(bquote(bold("Mean daily river discharge 3-6 month prior to sampling (ML" ~Day^'-1' *")")))+
+#   theme(axis.text = element_text(colour="black", size=12),
+#         axis.title = element_text(face="bold", size=14),
+#         strip.placement = "outside",
+#         strip.text = element_text(face="bold", size=12),
+#         strip.background = element_blank(),
+#         panel.border = element_rect(colour="black", fill=NA))+
+#   ylab("Predicted GP YOY ± SE (90s e-Fishing)") 
+# #ggtitle("Days since last large flow (top 5%)")
+# 
+# ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow plots.png", dpi =600, width = 21, height=14.8, units="cm")
+# ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow plots.pdf", dpi =600, width = 21, height=14.8, units="cm")
+# 
+# 
+# 
+# # Stocking plot
+# table(mydata_wide3$WaterbodyName2)
+# new_data <- expand.grid(Mean_Flow_scaled = median(mydata_wide3$Mean_Flow_scaled),
+#                         stocking = seq(min(mydata_wide3$stocking), max(mydata_wide3$stocking),by=100),
+#                         WaterbodyName2 = "Darling River", # most common
+#                         Mean_Temp_scaled = median(mydata_wide3$Mean_Temp_scaled),
+#                         SiteID = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(f1t, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# xxdat <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Model = "Flow Model")
+# 
+# stocking_plot_dat[[2]] <- xxdat
+# 
+# 
+# ggplot(new_data, aes(stocking, exp(PredictedFit))) + geom_line()+# facet_wrap(~WaterbodyName2)+
+#   #scale_y_log10()+
+#   geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
+#   ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+ theme_classic()+
+#   xlab("Total Stocking")+
+#   theme(axis.text = element_text(colour="black", size=12),
+#         axis.title = element_text(face="bold", size=14),
+#         strip.placement = "outside",
+#         strip.text = element_text(face="bold", size=14),
+#         strip.background = element_blank(),
+#         panel.border = element_rect(colour="black", fill=NA))
+# #scale_y_log10()
+# ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow stocking plot.png", dpi =600, width = 10, height=8, units="cm")
+# ggsave("Golden-perch-recruitment/Figures/GP YOY River Flow stocking plot.pdf", dpi =600, width = 10, height=8, units="cm")
+# 
+# dddd <- lm(Mean_Temp~ Mean_Temp_scaled , data = mydata_wide3)
+# summary(dddd)
+# 
+# # Temperature plot
+# table(mydata_wide3$WaterbodyName2)
+# new_data <- expand.grid(Mean_Flow_scaled = median(mydata_wide3$Mean_Flow_scaled),
+#                         Mean_Temp_scaled = seq(min(mydata_wide3$Mean_Temp_scaled), max(mydata_wide3$Mean_Temp_scaled),by=0.01),
+#                         stocking = 0,
+#                         WaterbodyName2 = "Darling River", # most common
+#                         SiteID = NA,
+#                         SampleDate = NA,
+#                         Sampling_duration = 90)
+# 
+# 
+# pred_dat <- predict(f1t, newdata = new_data, se=T, type="link", re.form=NA)
+# 
+# 
+# new_data$PredictedFit <- pred_dat$fit
+# new_data$PredictedSE <- pred_dat$se.fit
+# 
+# #xxdat <- new_data %>% select(stocking, PredictedFit, PredictedSE) %>% mutate(Model = "Flow Model")
+# 
+# 
+# ggplot(new_data, aes(Mean_Temp_scaled*5.225e+00+2.107e+01, exp(PredictedFit))) + geom_line()+# facet_wrap(~WaterbodyName2)+
+#   #scale_y_log10()+
+#   geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
+#   ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+ theme_classic()+
+#   xlab("Temperature (°C)")+
+#   geom_rug(data=mydata_wide3, aes(x=Mean_Temp), inherit.aes = F)+
+#   theme(axis.text = element_text(colour="black", size=12),
+#         axis.title = element_text(face="bold", size=14),
+#         strip.placement = "outside",
+#         strip.text = element_text(face="bold", size=14),
+#         strip.background = element_blank(),
+#         panel.border = element_rect(colour="black", fill=NA))
+# #scale_y_log10()
+# ggsave("Golden-perch-recruitment/Figures/GP YOY Temperature plot.png", dpi =600, width = 10, height=8, units="cm")
+# ggsave("Golden-perch-recruitment/Figures/GP YOY Temperature plot.pdf", dpi =600, width = 10, height=8, units="cm")
+# 
+# 
+# 
 
 
 #### Try to test EWR relationships
 
 library(tidyverse)
 library(glmmTMB)
-mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/GP YOY modelling data_June25.csv")
+mydata_wide2 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/GP YOY modelling data_June25.csv")
 
 mydata_wide3 <- mydata_wide2 %>% dplyr::select(stocking, GP_YOY,Mean_Flow_scaled,WaterbodyName,
-                                        Days_since_large_flow,WaterbodyName2, NorthernRain,
-                                        SampleDate, SiteID, Sampling_duration, Mean_SOI, Mean_PDO, # , Max_variability
-                                        Mean_MonsoonIndex, Lg_Fresh, Over_bank) %>%
+                                               Days_since_large_flow,WaterbodyName2, NorthernRain,
+                                               SampleDate, SiteID, Sampling_duration, Mean_SOI, Mean_PDO, # , Max_variability
+                                               Mean_MonsoonIndex, Lg_Fresh, Over_bank) %>%
   mutate(Lg_Fresh = as.factor(as.character(Lg_Fresh)),
          Over_bank = as.factor(as.character(Over_bank)),
          EWR = as.factor(case_when((Lg_Fresh == "1" & Over_bank == "0")~ "Lg_Fresh",
-                         (Over_bank == "1")~ "Over_bank",
-                         T ~ "None"))) %>%
-    
+                                   (Over_bank == "1")~ "Over_bank",
+                                   T ~ "None"))) %>%
+  
   drop_na()
 
 table(mydata_wide3$EWR, mydata_wide3$WaterbodyName2)
@@ -1712,158 +1715,64 @@ summary(e1)
 car::Anova(e1)
 eee <- as.data.frame(car::Anova(e1))
 eee$Parameter <- row.names(eee)
-write_csv(eee, "Golden-perch-recruitment/Data/EWR model results.csv")
+write_csv(eee, "Golden-perch-recruitment/Data/Sensitivity Analysis/EWR model results.csv")
 
 tid_sum <- broom.mixed::tidy(e1)
 tid_sum
-write_csv(tid_sum, "Golden-perch-recruitment/Data/EWR model output.csv")
-
-performance::r2_nakagawa(e1, tolerance = 1e-10)
-performance::r2(e1)
-
-eee
-
-
-library(performance)
-
-# library(DHARMa)
-# resids <- simulateResiduals(e1)
-# plot(resids)
-# testOutliers(e1, type="bootstrap")
-# testDispersion(e1)
-# 
-# plot(effects::allEffects(e1))
-# 
-# plot(ggeffects::ggpredict(e1, terms=c("EWR", "WaterbodyName2")))
-
-
-### EWR Plot only
-new_data <- expand.grid(EWR =unique(mydata_wide3$EWR),
-                        stocking = 0,#seq(min(mydata_wide3$stocking), max(mydata_wide3$stocking),by=100),
-                        WaterbodyName2 = unique(mydata_wide3$WaterbodyName2), #"Darling River", # most common
-                        SiteID = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(e1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-new_data$lower_CI <- pred_dat$fit-pred_dat$se.fit
-new_data$upper_CI <- pred_dat$fit+pred_dat$se.fit
-new_data <- new_data %>% mutate(#lower_CI = case_when(lower_CI < 0 ~ 0,
-                                #                     T ~ lower_CI),
-                                EWR2 = case_when(EWR == "None" ~ "None",
-                                                 EWR == "Lg_Fresh" ~ "Large\nFresh",
-                                                 EWR == "Over_bank" ~ "Overbank"))
-
-
-xxdat <- new_data %>% select(EWR, PredictedFit, PredictedSE) %>% mutate(Model = "EWR Model")
-
-stocking_plot_dat[[3]] <- xxdat
-
-dud1 <- new_data %>% filter(WaterbodyName2 == "Boomi River" & EWR == "Lg_Fresh")
-dud2 <- new_data %>% filter(WaterbodyName2 == "South Darling River" & EWR == "Lg_Fresh")
-dud3 <- new_data %>% filter(WaterbodyName2 == "Warrego River" & EWR == "Lg_Fresh")
-
-new_data2 <- new_data %>% anti_join(dud1) %>% anti_join(dud2) %>% anti_join(dud3)
-
-new_data2 <- new_data2 %>% mutate(River_labels = case_when(WaterbodyName2 == "Boomi River" ~ "a) Boomi River",
-                                                                           WaterbodyName2 == "Bogan River" ~ "c) Bogan River",
-                                                                           WaterbodyName2 == "Warrego River" ~ "b) Warrego River",
-                                                                           WaterbodyName2 == "Darling River" ~ "f) Central Darling-Baaka",
-                                                                           WaterbodyName2 == "North Darling River" ~ "e) Northern Darling-Baaka",
-                                                                           WaterbodyName2 == "South Darling River" ~ "g) Southern Darling-Baaka",
-                                                                           WaterbodyName2 == "Barwon River" ~ "d) Barwon River",))
-
-ggplot(new_data2, aes(EWR2, exp(PredictedFit))) + geom_point()+ facet_wrap(~River_labels, scales = "free_y")+
-  #scale_y_log10()+
-  theme_classic()+
-  geom_errorbar(aes(ymin=exp(lower_CI), ymax=exp(upper_CI)), alpha=0.5) +
-  scale_x_discrete(breaks=c("None", "Large\nFresh", "Overbank"), limits = c("None", "Large\nFresh", "Overbank"))+
-  ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+
-  xlab("EWR")+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=12),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))
-
-ggsave("Golden-perch-recruitment/Figures/EWR Achievement with duration.png", width = 21, height=14.8, units="cm", dpi=300)
-ggsave("Golden-perch-recruitment/Figures/EWR Achievement with duration.pdf", width = 21, height=14.8, units="cm", dpi=300)
-
-
-table(mydata_wide3$EWR, mydata_wide3$WaterbodyName2)
-
-### Stocking plot
-#table(mydata_wide3$WaterbodyName2)
-table(mydata_wide3$EWR)
-str(mydata_wide3)
-new_data <- expand.grid(EWR = unique(mydata_wide3$EWR),
-                        stocking = seq(min(mydata_wide3$stocking), max(mydata_wide3$stocking),by=100),
-                        WaterbodyName2 = unique(mydata_wide3$WaterbodyName2), # most common
-                        SiteID = NA,
-                        SampleDate = NA,
-                        Sampling_duration = 90)
-
-
-pred_dat <- predict(e1, newdata = new_data, se=T, type="link", re.form=NA)
-
-
-new_data$PredictedFit <- pred_dat$fit
-new_data$PredictedSE <- pred_dat$se.fit
-
-xxdat <- new_data %>% select(EWR, WaterbodyName2, stocking, PredictedFit, PredictedSE)  %>%
-  filter(EWR == "None" & WaterbodyName2 == "Darling River") %>% select(stocking, PredictedFit, PredictedSE) %>%
-  mutate(Model = "EWR Model")
-
-stocking_plot_dat[[3]] <- xxdat
+write_csv(tid_sum, "Golden-perch-recruitment/Data/Sensitivity Analysis/EWR model output 200mm.csv")
 
 
 
-ggplot(xxdat, aes(stocking, exp(PredictedFit))) + geom_line()+# facet_wrap(~WaterbodyName2)+
-  #scale_y_log10()+
-  theme_classic()+
-  geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
-  ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+
-  xlab("Total Stocking")+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=14),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))
-#scale_y_log10()
-ggsave("Golden-perch-recruitment/Figures/GP YOY EWR stocking plot.png", dpi =600, width = 10, height=8, units="cm")
-ggsave("Golden-perch-recruitment/Figures/GP YOY EWR stocking plot.pdf", dpi =600, width = 10, height=8, units="cm")
+### Compare climate mods
 
-#### Stocking plot combined
-stocking_plot_dat_full <- bind_rows(stocking_plot_dat) %>%
-  mutate(Model = case_when(Model == "Climate Model" ~ "a) Climate Model",
-                           Model == "Flow Model" ~ "b) Flow Model",
-                           Model == "EWR Model" ~ "c) EWR Model"))
+dat_124 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/Original/GP Climate model output.csv") %>% mutate("YOY_Threshold" = 124)
+dat_200 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/YOY_200mm/GP Climate model output_200.csv") %>% mutate("YOY_Threshold" = 200)
 
+all_datC <- bind_rows(dat_124, dat_200) %>% filter(effect == "fixed") %>% mutate(model = "Climate")
 
+p1 <- ggplot(all_datC, aes(x = term, y = estimate, col = as.character(YOY_Threshold), group = as.character(YOY_Threshold))) + geom_point(position = position_dodge(width = 1)) +
+  coord_flip()+
+  scale_color_manual(values = c("red", "blue"), name = "YOY Threshold")+
+  geom_errorbar(aes(ymin = estimate-std.error, ymax = estimate+std.error),
+                position = position_dodge(width = 1)) + xlab(NULL) + ylab(NULL)
+p1
 
-ggplot(stocking_plot_dat_full, aes(stocking/1000, exp(PredictedFit))) + geom_line()+# facet_wrap(~WaterbodyName2)+
-  #scale_y_log10()+
-  theme_classic()+ facet_wrap(~Model, scales = "free_y")+ 
-  coord_cartesian(ylim = c(0, NA))+ scale_y_continuous(expand = c(0,0))+
-  geom_ribbon(aes(ymin=exp(PredictedFit-PredictedSE), ymax=exp(PredictedFit+PredictedSE)), alpha=0.5) +
-  ylab("Predicted GP YOY ± SE\n(90s e-Fishing)")+
-  xlab("Total Stocking ('000)")+
-  theme(axis.text = element_text(colour="black", size=12),
-        axis.title = element_text(face="bold", size=14),
-        strip.placement = "outside",
-        strip.text = element_text(face="bold", size=14),
-        strip.background = element_blank(),
-        panel.border = element_rect(colour="black", fill=NA))
+### Compare flow mods
 
-ggsave("Golden-perch-recruitment/Figures/GP YOY stocking plot combined.png", dpi =600, width = 21, height=8, units="cm")
-ggsave("Golden-perch-recruitment/Figures/GP YOY stocking plot combined.pdf", dpi =600, width = 21, height= 8, units="cm")
+dat_124 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/Original/Flow model output.csv") %>% mutate("YOY_Threshold" = 124)
+dat_200 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/YOY_200mm/Flow model output 200mm.csv") %>% mutate("YOY_Threshold" = 200)
 
+all_datF <- bind_rows(dat_124, dat_200) %>% filter(effect == "fixed") %>% mutate(model = "Flow")
+
+p2 <- ggplot(all_datF, aes(x = term, y = estimate, col = as.character(YOY_Threshold), group = as.character(YOY_Threshold))) + geom_point(position = position_dodge(width = 1)) +
+  coord_flip()+
+  scale_color_manual(values = c("red", "blue"), name = "YOY Threshold")+
+  geom_errorbar(aes(ymin = estimate-std.error, ymax = estimate+std.error),
+                position = position_dodge(width = 1)) + xlab(NULL) + ylab(NULL)
+
+p2
+
+### Compare EWR mods
+
+dat_124 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/Original/EWR model output.csv") %>% mutate("YOY_Threshold" = 124)
+dat_200 <- read_csv("Golden-perch-recruitment/Data/Sensitivity Analysis/YOY_200mm/EWR model output 200mm.csv") %>% mutate("YOY_Threshold" = 200)
+
+all_datE <- bind_rows(dat_124, dat_200) %>% filter(effect == "fixed") %>% mutate(model = "EWR")
+
+p3 <- ggplot(all_datE, aes(x = term, y = estimate, col = as.character(YOY_Threshold), group = as.character(YOY_Threshold))) + geom_point(position = position_dodge(width = 1)) +
+  coord_flip()+
+  scale_color_manual(values = c("red", "blue"), name = "YOY Threshold")+
+  geom_errorbar(aes(ymin = estimate-std.error, ymax = estimate+std.error),
+                position = position_dodge(width = 1))+ xlab(NULL) + ylab("Estimate (±1SE)")
+
+p3
+
+library(patchwork)
+p1/p2/p3 + plot_layout(guides = "collect", heights = c(1, 2,2))+ plot_annotation(tag_levels = "a") &
+  theme_bw() &
+  theme(legend.position = "bottom",
+        axis.text =element_text(colour="black"))
+
+ggsave("Golden-perch-recruitment/Data/Sensitivity Analysis/YOY_200mm/plots.png", dpi=300, width = 21, height=14.8*2, units="cm")
 
 

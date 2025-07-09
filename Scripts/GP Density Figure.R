@@ -5,7 +5,7 @@
 library(tidyverse)
 library(lubridate)
 
-catch <- read_csv("All_catch_11_08_2023_with_fixed_WRPA.csv")
+catch <- read_csv("Golden-perch-recruitment/Data/All_catch_11_08_2023_with_fixed_WRPA.csv")
 
 catch <- catch %>% mutate(project_segment = paste0(ProjectName,":",SegmentName)) %>% distinct()
 
@@ -40,7 +40,7 @@ key_rivers <- c("Lachlan River", "Macquarie River", "Gwydir River", "Namoi River
 catch <- catch %>% filter(WaterbodyName %in% key_rivers)
 
 
-bio <- read_csv("All bio_11_08_2023.csv")
+bio <- read_csv("Golden-perch-recruitment/Data/All bio_11_08_2023.csv")
 
 bio <- bio %>% mutate(project_segment = paste0(ProjectName,":",SegmentName)) %>% distinct()
 
@@ -122,6 +122,9 @@ summary_dat2 <- summary_dat %>% ungroup() %>% group_by(WaterbodyName) %>%
             se_percent_YOY = sd_percent_YOY/(sqrt(n)))
 
 
+
+
+
 library(ggbeeswarm)
 ggplot(summary_dat2, aes(WaterbodyName, Mean_percent_YOY)) + geom_point()+
   geom_errorbar(aes(ymin=Mean_percent_YOY-se_percent_YOY, ymax = Mean_percent_YOY+se_percent_YOY))+
@@ -145,9 +148,31 @@ river_sum1
 river_sum2 <- gp_bio_expanded %>%  group_by(WaterbodyName) %>% summarise(total = n())
 river_sum2
 
-river_sum <- river_sum1 %>% left_join(river_sum2)
-river_sum
+river_sum <- river_sum1 %>% left_join(river_sum2) %>% mutate(Perc_YOY = YOY/total*100)
+river_sum 
 
+# 
+# river_sum1 <- gp_bio_expanded %>% filter(Length_mm <= 124) %>% 
+#   group_by(WaterbodyName, FinYear) %>% summarise(YOY = n()) 
+# river_sum1
+# 
+# river_sum2 <- gp_bio_expanded %>%  group_by(WaterbodyName, FinYear) %>% summarise(total = n(), mean_size = mean(Length_mm,na.rm=T))
+# river_sum2
+# 
+# river_sum <- river_sum2 %>% left_join(river_sum1) %>% mutate(Perc_YOY = YOY/total*100) %>%
+#   replace_na(list(n =0, Perc_YOY = 0))
+# river_sum 
+# 
+# river_sum_sum <- river_sum %>% ungroup() %>% mutate(Over_10 = case_when(Perc_YOY>5 ~ 1,
+#                                                                         T ~0),
+#                                                     size_124 = case_when(mean_size<=200 ~ 1,
+#                                                                          T ~0)) %>%
+#   group_by(WaterbodyName) %>% summarise(Year_over = sum(Over_10),
+#                                         years_small_size = sum(size_124))
+# river_sum_sum
+# 
+# yoy_tots <- river_sum %>% ungroup() %>% group_by(WaterbodyName) %>% summarise(YOY_tot = sum(YOY, na.rm=T))
+# yoy_tots
 # 
 # ### old code
 # mydata <- catch %>% 
@@ -191,7 +216,16 @@ river_sum
 # mydata_wide$GP_YOY <- replace_na(mydata_wide$GP_YOY,0)
 # 
 # 
-# hist(mydata_wide$GP_YOY)
+hist(gp_bio_expanded2$Length_mm)
+
+ggplot(gp_bio_expanded2, aes(x=Length_mm)) + geom_histogram(binwidth=10)+
+  scale_x_continuous(breaks=seq(0,600,30)) + theme_bw() +
+  geom_vline(aes(xintercept = 124), col= "red", lty="dashed")+
+  geom_vline(aes(xintercept = 62), col= "blue", lty="dashed") +
+  xlab("Total Length (mm)") +
+  theme(axis.text = element_text(size=11, colour="black"),
+        axis.title = element_text(size=12, face="bold"))
+ggsave("Golden-perch-recruitment/Figures/All samples histogram.png", dpi=300, width=21, height=14.8, units = "cm")
 
 mean_lengths <- gp_bio_expanded %>% group_by(FinYear, WaterbodyName) %>%
   summarise(Mean_Length = mean(Length_mm)) %>% filter(FinYear != 2024)
@@ -213,8 +247,8 @@ ggplot(gp_bio_expanded2, aes(x=Length_mm,y=FinYear, group=FinYear, fill = Mean_L
         strip.background = element_rect(fill=NA),
         strip.text = element_text(face="bold", size=10))
 
-ggsave("GP Juvenile Densities.png", dpi=600, width = 21, height=27, units="cm")
-ggsave("GP Juvenile Densities.pdf", dpi=600, width = 21, height=27, units="cm")
+#ggsave("GP Juvenile Densities.png", dpi=600, width = 21, height=27, units="cm")
+#ggsave("GP Juvenile Densities.pdf", dpi=600, width = 21, height=27, units="cm")
 
 #### Summarise sampling efforts
 
@@ -252,7 +286,7 @@ p3 <- ggplot(sampling, aes(x=WaterbodyName, y = YOY/Total)) + geom_col() +
 
 library(patchwork)
 p1+p2+p3 + plot_layout(ncol=1)
-ggsave("Juvenile exploration.png", dpi = 300, width=21, height=28, units="cm")
+#ggsave("Juvenile exploration.png", dpi = 300, width=21, height=28, units="cm")
 
 mean_lengths2 <- gp_bio_expanded %>% group_by(FinYear) %>%
   summarise(Mean_Length = mean(Length_mm)) %>% filter(FinYear != 2024)
@@ -272,5 +306,5 @@ ggplot(gp_bio_expanded3, aes(x=Length_mm,y=FinYear, group=FinYear)) + #, fill = 
         strip.background = element_rect(fill=NA),
         strip.text = element_text(face="bold", size=10))
 
-ggsave("Length density plot grey.png", dpi=600, units="cm",
-       width=21, height=21)
+#ggsave("Length density plot grey.png", dpi=600, units="cm",
+#       width=21, height=21)
